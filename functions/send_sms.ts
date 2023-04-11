@@ -12,7 +12,7 @@ export const SendTwilioSMSDefinition = DefineFunction({
   title: "Send Twilio SMS function",
   description:
     "Given a phone number it returns the contact or create a new contact if one doesn't exist with passed in values.",
-  source_file: "functions/get_or_create_contact.ts",
+  source_file: "functions/send_sms.ts",
   input_parameters: {
     properties: {
       sender: {
@@ -40,8 +40,7 @@ export const SendTwilioSMSDefinition = DefineFunction({
   },
 });
 
-// This function takes the input from the open form step, adds formatting, saves our
-// updated object into the Slack hosted datastore, and returns the updated message.
+// Sends a SMS via the Twilio API
 export default SlackFunction(
   SendTwilioSMSDefinition,
   async ({ inputs, env }) => {
