@@ -23,24 +23,14 @@ export const GetOrCreateContactDefinition = DefineFunction({
         description: "Name of the SMS Sender",
       },
       channel: {
-        type: Schema.types.string,
+        type: Schema.slack.types.channel_id,
         description: "Channel the SMS will be posted in",
-      },
-      workflow_manage_contact: {
-        type: Schema.types.string,
-        description: "Workflow to run to manage a contact",
-      },
-      workflow_sms_reply: {
-        type: Schema.types.string,
-        description: "Workflow to run to send an SMS",
       },
     },
     required: [
       "sender",
       "name",
       "channel",
-      "workflow_manage_contact",
-      "workflow_sms_reply",
     ],
   },
   output_parameters: {
@@ -70,10 +60,10 @@ export const GetOrCreateContactDefinition = DefineFunction({
 // updated object into the Slack hosted datastore, and returns the updated message.
 export default SlackFunction(
   GetOrCreateContactDefinition,
-  async ({ inputs, client }) => {
+  async ({ inputs, client, env }) => {
     // assume the number is known
-    let button_cta = "Reply via SMS";
-    let button_workflow = inputs.workflow_sms_reply;
+    let button_cta = env["button_cta_reply"];
+    let button_workflow = env["workflow_sms_reply"];
 
     const phone = inputs.sender;
     let response = await client.apps.datastore.get<
@@ -90,8 +80,8 @@ export default SlackFunction(
         datastore: "PhoneMappings",
         item: {
           id: phone,
-          name: "Unknown",
-          channel: "default_channel",
+          name: env["default_name"],
+          channel: env["default_channel"],
         },
       });
 
@@ -102,8 +92,8 @@ export default SlackFunction(
         response = add;
       }
 
-      button_cta = "Manage contact";
-      button_workflow = inputs.workflow_manage_contact;
+      button_cta = env["button_cta_manage"];
+      button_workflow = env["workflow_manage_contact"];
     }
 
     const name = response.item.name;
