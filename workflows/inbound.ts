@@ -38,7 +38,7 @@ const SMSInboundWorkflow = DefineWorkflow({
 SMSInboundWorkflow.addStep(RouteSMSDefinition, {
   sender: SMSInboundWorkflow.inputs.sender,
   receiver: SMSInboundWorkflow.inputs.receiver,
-  messsage: SMSInboundWorkflow.inputs.message,
+  message: SMSInboundWorkflow.inputs.message,
 });
 
 export default SMSInboundWorkflow;

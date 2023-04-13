@@ -23,7 +23,7 @@ export const RouteSMSDefinition = DefineFunction({
         type: Schema.types.string,
         description: "SMS Receiver",
       },
-      messsage: {
+      message: {
         type: Schema.types.string,
         description: "SMS message",
       },
@@ -31,7 +31,7 @@ export const RouteSMSDefinition = DefineFunction({
     required: [
       "sender",
       "receiver",
-      "messsage",
+      "message",
     ],
   },
   output_parameters: {
@@ -48,6 +48,16 @@ export default SlackFunction(
     // assume the number is known
     let button_cta = "Reply via SMS";
     let button_workflow = env["workflow_sms_reply"];
+    let button_params = [
+      {
+        "name": "input_parameter_a",
+        "value": "Value for input param A",
+      },
+      {
+        "name": "input_parameter_b",
+        "value": "Value for input param B",
+      },
+    ];
 
     const phone = inputs.sender;
     let response = await client.apps.datastore.get<
@@ -89,31 +99,50 @@ export default SlackFunction(
     if (channel == env["default_channel"]) {
       button_cta = "Manage contact";
       button_workflow = env["workflow_manage_contact"];
+      button_params = [
+        {
+          "name": "input_parameter_a",
+          "value": "Value for input param A",
+        },
+        {
+          "name": "input_parameter_b",
+          "value": "Value for input param B",
+        },
+      ];
     }
 
     console.log("Incoming SMS!");
+    // Call the messaging API
     const post = await client.chat.postMessage({
       channel: channel,
-      text: "hi",
+      text: `SMS from ${name} (${inputs.sender}): ${inputs.message}`,
       blocks: [
         {
           "type": "section",
           "text": {
             "type": "mrkdwn",
-            "text": `*${name} - ${inputs.sender}:* ${inputs.messsage}`,
+            "text": `*${name} - ${inputs.sender}*`,
           },
         },
         {
-          "type": "actions",
-          "block_id": "my-buttons",
-          "elements": [
-            {
-              type: "button",
-              text: { type: "plain_text", text: button_cta },
-              action_id: "approve_request",
-              style: "default",
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": `> ${inputs.message}`,
+          },
+        },
+        {
+          "type": "workflow_button",
+          "text": {
+            "type": "plain_text",
+            "text": button_cta,
+          },
+          "workflow": {
+            "trigger": {
+              "url": button_workflow,
+              "customizable_input_parameters": button_params,
             },
-          ],
+          },
         },
       ],
       metadata: {
@@ -121,7 +150,7 @@ export default SlackFunction(
         "event_payload": {
           "sender": inputs.sender,
           "receiver": inputs.receiver,
-          "message": inputs.messsage,
+          "message": inputs.message,
         },
       },
     });
