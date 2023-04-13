@@ -1,5 +1,5 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import { GetOrCreateContactDefinition } from "./get_or_create_contact.ts";
+import ContactsDatastore from "../datastores/datastore.ts";
 
 /**
  * Functions are reusable building blocks of automation that accept
@@ -12,7 +12,7 @@ export const RouteSMSDefinition = DefineFunction({
   title: "Route SMS to the appropriate channel",
   description:
     "Given a phone number it returns the contact or create a new contact if one doesn't exist with passed in values.",
-  source_file: "functions/get_or_create_contact.ts",
+  source_file: "functions/route_sms.ts",
   input_parameters: {
     properties: {
       sender: {
@@ -45,16 +45,94 @@ export const RouteSMSDefinition = DefineFunction({
 export default SlackFunction(
   RouteSMSDefinition,
   async ({ inputs, client, env }) => {
-    const [name, channel, button_cta, button_workflow] =
-      await GetOrCreateContactDefinition({
-        sender: inputs.sender,
-        name: env["default_name"],
-        channel: env["default_channel"],
+    // assume the number is known
+    let button_cta = "Reply via SMS";
+    let button_workflow = env["workflow_sms_reply"];
+
+    const phone = inputs.sender;
+    let response = await client.apps.datastore.get<
+      typeof ContactsDatastore.definition
+    >({
+      datastore: "PhoneMappings",
+      id: phone,
+    });
+
+    if (!response.ok) {
+      const error = `Failed to fetch row from datastore! - ${response.error}`;
+      return { error };
+    }
+
+    if (Object.keys(response.item).length === 0) {
+      console.log("Contact unknown... adding contact");
+
+      const add = await client.apps.datastore.put<
+        typeof ContactsDatastore.definition
+      >({
+        datastore: "PhoneMappings",
+        item: {
+          id: phone,
+          name: env["default_name"],
+          channel: env["default_channel"],
+        },
       });
 
-    // do something with
-    // name, channel, button_cta, button_workflow
+      if (!add.ok) {
+        const error = `Failed to add row to datastore: ${response.error}`;
+        return { error };
+      }
+      response = add;
+    }
 
-    return { outputs: {} };
+    const name = response.item.name;
+    const channel = response.item.channel;
+
+    if (channel == env["default_channel"]) {
+      button_cta = "Manage contact";
+      button_workflow = env["workflow_manage_contact"];
+    }
+
+    console.log("Incoming SMS!");
+    const post = await client.chat.postMessage({
+      channel: channel,
+      text: "hi",
+      blocks: [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": `*${name} - ${inputs.sender}:* ${inputs.messsage}`,
+          },
+        },
+        {
+          "type": "actions",
+          "block_id": "my-buttons",
+          "elements": [
+            {
+              type: "button",
+              text: { type: "plain_text", text: button_cta },
+              action_id: "approve_request",
+              style: "default",
+            },
+          ],
+        },
+      ],
+      metadata: {
+        "event_type": "sms_received",
+        "event_payload": {
+          "sender": inputs.sender,
+          "receiver": inputs.receiver,
+          "message": inputs.messsage,
+        },
+      },
+    });
+    if (post.error) {
+      const error = `Failed to post a message with buttons! - ${post.error}`;
+      return { error };
+    }
+    // Important to set 'completed' to false. We'll update the status later
+    // in our action handler
+    return { completed: false };
+
+    // return { outputs: {} };
   },
 );

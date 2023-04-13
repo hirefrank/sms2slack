@@ -1,7 +1,6 @@
 import { Manifest } from "deno-slack-sdk/mod.ts";
 import ContactsDatastore from "./datastores/datastore.ts";
-import { GetOrCreateContactDefinition } from "./functions/get_or_create_contact.ts";
-import { SendTwilioSMSDefinition } from "./functions/send_sms.ts";
+import SMSInboundWorkflow from "./workflows/inbound.ts";
 
 /**
  * The app manifest contains the app's configuration. This
@@ -11,10 +10,9 @@ import { SendTwilioSMSDefinition } from "./functions/send_sms.ts";
 export default Manifest({
   name: "sms2slack",
   description:
-    "A set of functions for routing/sending SMS messages from Twilio with Slack.",
+    "A set of workflows for routing/sending SMS messages from Twilio with Slack.",
   icon: "assets/sms-icon.png",
-  workflows: [],
-  functions: [GetOrCreateContactDefinition, SendTwilioSMSDefinition],
+  workflows: [SMSInboundWorkflow],
   outgoingDomains: ["twilio.com"],
   datastores: [ContactsDatastore],
   botScopes: [
@@ -23,6 +21,5 @@ export default Manifest({
     "chat:write.public",
     "datastore:read",
     "datastore:write",
-    "workflow.steps:execute",
   ],
 });
