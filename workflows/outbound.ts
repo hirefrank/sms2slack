@@ -1,5 +1,5 @@
 import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
-import { ManageContactDefinition } from "../functions/manage_contact.ts";
+import { SendTwilioSMSDefinition } from "../functions/send_sms.ts";
 
 /**
  * A workflow is a set of steps that are executed in order.
@@ -9,8 +9,8 @@ import { ManageContactDefinition } from "../functions/manage_contact.ts";
  * This workflow uses interactivity. Learn more at:
  * https://api.slack.com/future/forms#add-interactivity
  */
-const ManageContactWorkflow = DefineWorkflow({
-  callback_id: "manage_contact_workflow",
+const SMSOutboundWorkflow = DefineWorkflow({
+  callback_id: "sms_outbound_workflow",
   title: "SMS Outbound workflow",
   description: "A workflow for sending replies as SMS.",
   input_parameters: {
@@ -18,14 +18,17 @@ const ManageContactWorkflow = DefineWorkflow({
       name: {
         type: Schema.types.string,
       },
-      phone: {
+      sender: {
         type: Schema.types.string,
       },
-      channel: {
+      receiver: {
         type: Schema.types.string,
+      },
+      interactivity: {
+        type: Schema.slack.types.interactivity,
       },
     },
-    required: ["name", "phone", "channel"],
+    required: ["name", "sender", "receiver", "interactivity"],
   },
 });
 
@@ -35,27 +38,24 @@ const ManageContactWorkflow = DefineWorkflow({
  * https://api.slack.com/future/functions#open-a-form
  */
 
-const inputForm = ManageContactWorkflow.addStep(
-  Schema.slack.functions.OpenForm,
-  {
-    title: `SMS to ${ManageContactWorkflow.inputs.name}`,
-    interactivity: SMSOutboundWorkflow.inputs.interactivity,
-    submit_label: "Send SMS",
-    fields: {
-      elements: [{
-        name: "message",
-        title: "Message",
-        type: Schema.types.string,
-      }],
-      required: ["message"],
-    },
+const inputForm = SMSOutboundWorkflow.addStep(Schema.slack.functions.OpenForm, {
+  title: `SMS to ${SMSOutboundWorkflow.inputs.name}`,
+  interactivity: SMSOutboundWorkflow.inputs.interactivity,
+  submit_label: "Send SMS",
+  fields: {
+    elements: [{
+      name: "message",
+      title: "Message",
+      type: Schema.types.string,
+    }],
+    required: ["message"],
   },
-);
+});
 
-ManageContactWorkflow.addStep(SendTwilioSMSDefinition, {
+SMSOutboundWorkflow.addStep(SendTwilioSMSDefinition, {
   sender: SMSOutboundWorkflow.inputs.sender,
   receiver: SMSOutboundWorkflow.inputs.receiver,
   message: inputForm.outputs.fields.message,
 });
 
-export default ManageContactWorkflow;
+export default SMSOutboundWorkflow;

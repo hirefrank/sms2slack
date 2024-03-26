@@ -48,16 +48,6 @@ export default SlackFunction(
     // assume the number is known
     let button_cta = "Reply via SMS";
     let button_workflow = env["workflow_sms_reply"];
-    let button_params = [
-      {
-        "name": "input_parameter_a",
-        "value": "Value for input param A",
-      },
-      {
-        "name": "input_parameter_b",
-        "value": "Value for input param B",
-      },
-    ];
 
     const phone = inputs.sender;
     let response = await client.apps.datastore.get<
@@ -99,16 +89,6 @@ export default SlackFunction(
     if (channel == env["default_channel"]) {
       button_cta = "Manage contact";
       button_workflow = env["workflow_manage_contact"];
-      button_params = [
-        {
-          "name": "input_parameter_a",
-          "value": "Value for input param A",
-        },
-        {
-          "name": "input_parameter_b",
-          "value": "Value for input param B",
-        },
-      ];
     }
 
     console.log("Incoming SMS!");
